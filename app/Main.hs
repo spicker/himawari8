@@ -1,13 +1,15 @@
 
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 
 
 module Main where
 
 
-import Prelude hiding (FilePath)
-import Lib
-import Turtle
+import           Lib
+import           Prelude hiding (FilePath)
+import           Req
+import           Turtle
 
 
 main :: IO ()
@@ -25,11 +27,11 @@ main = do
     -- GET TILES
     putStrLn "Loading tiles..."
     modelBs <- getTiles modelUrls
-    
+
     -- REMOVE OLD
     direxists <- testdir (imgfolder modelBs)
     case direxists of
-        True -> return ()
+        True  -> return ()
         False -> mkdir $ imgfolder modelBs
 
     putStrLn "Removing old files..."
@@ -42,7 +44,7 @@ main = do
     -- STITCH TILES
     putStrLn "Stitching tiles..."
     img <- return $ stitchTiles modelD
-    
+
     -- RESIZE
     putStrLn "Resizing image..."
     imgR <- return $ resizeImage img
@@ -64,21 +66,21 @@ main = do
 
 
 parser :: Parser (Int, Int)
-parser = 
+parser =
     (,) <$> argInt "scale" "Scale"
         <*> argInt "tz" "Timezone offset"
 
 
 setWallpaper :: FilePath -> IO ()
 setWallpaper imgpath = do
-    procs 
-        "sqlite3" 
+    procs
+        "sqlite3"
         [ "/Users/spicker/Library/Application Support/Dock/desktoppicture.db"
-        , format ("update data set value = '"%fp%"'") imgpath ] 
+        , format ("update data set value = '"%fp%"'") imgpath ]
         empty
-    procs 
-        "killall" 
-        [ "Dock" ] 
+    procs
+        "killall"
+        [ "Dock" ]
         empty
 
 

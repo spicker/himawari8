@@ -1,54 +1,51 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Lib where
 
 
-import           Data.Text       (pack, unpack)
-import           Data.Time
-import qualified Data.List
-import qualified Data.ByteString as B
--- import           Control.Concurrent.Async
-import           Network.Browser
-import           Network.HTTP
-import           Network.URI
-import           Prelude hiding (FilePath)
-import           Turtle
 import           Codec.Picture
-import qualified Vision.Image as F
-import           Vision.Primitive (ix2)
+import qualified Data.ByteString          as B
+import qualified Data.List
+import           Data.Text                (pack, unpack)
+import           Data.Time
+import           Network.URI
+import           Prelude                  hiding (FilePath)
+import           Turtle
+import qualified Vision.Image             as F
 import qualified Vision.Image.JuicyPixels as JF
+import           Vision.Primitive         (ix2)
 
 
-data Tile = Tile 
-    { position :: (Int, Int)
+data Tile = Tile
+    { position   :: (Int, Int)
     , bytestring :: B.ByteString
-    , url :: URI
-    , img :: Image PixelRGB8
+    , url        :: URI
+    , img        :: Image PixelRGB8
     -- , path :: FilePath
-    } 
+    }
 
 
-data Model = Model 
-    { tiles :: [Tile]
-    , scale :: Int
-    , tzOffset :: Int
-    , baseUrl :: String
+data Model = Model
+    { tiles     :: [Tile]
+    , scale     :: Int
+    , tzOffset  :: Int
+    , baseUrl   :: String
     , imgfolder :: FilePath
-    , imgfile :: FilePath
-    , atime :: LocalTime
-    } 
+    , imgfile   :: FilePath
+    , atime     :: LocalTime
+    }
 
 
 
 initialModel :: Model
-initialModel = Model 
+initialModel = Model
     { tiles = []
     , scale = 1
     , tzOffset = 1
     , baseUrl = "http://himawari8-dl.nict.go.jp/himawari8/img/D531106"
     , imgfolder = ""
     , imgfile = ""
-    , atime = LocalTime { localDay = fromGregorian 0 0 0, localTimeOfDay = midnight } 
+    , atime = LocalTime { localDay = fromGregorian 0 0 0, localTimeOfDay = midnight }
     }
 
 
@@ -77,7 +74,7 @@ tileURLs model =
 
 getTileURL :: Model -> Tile -> Tile
 getTileURL model tile =
-    let 
+    let
         getTimeStr = formatTime defaultTimeLocale "%Y/%m/%d/%H" (atime model)
         getMinute = (\a -> div a 10) . toInteger . read $ formatTime defaultTimeLocale "%M" (atime model)
         -- textStr = format (s%"/"%d%"d/550/"%s%d%"000_"%d%"_"%d%".png") baseUrl scl getTimeStr getMinute x y
@@ -85,37 +82,17 @@ getTileURL model tile =
     in
         case (parseURI urlStr) of
             Just uri -> tile { url = uri }
-            Nothing -> tile
-    
-
-getTile :: Tile -> BrowserAction (HandleStream B.ByteString) Tile
-getTile tile = do
-    req <- return (url tile)
-    (_,rsp) <- request (mkRequest GET req)
-    return tile { bytestring = (rspBody rsp) }
-
-
-getTiles :: Model -> IO Model
-getTiles model = do
-    ts <- Network.Browser.browse $ do
-        setAllowRedirects True
-        sequence (map getTile (tiles model))
-    return model { tiles = ts }
-
-
--- getTile' :: Tile -> IO Tile
--- getTile' tile = do
---     rsp <- httpLBS 
+            Nothing  -> tile
 
 
 decodeTile :: Tile -> IO Tile
-decodeTile tile = 
+decodeTile tile =
     case decodePng (bytestring tile) of
         Left err -> do
             putStrLn ("Error decoding Png:" ++ err)
             return tile
         Right (ImageRGB8 i) -> return tile { img = i }
-        Right _ -> do 
+        Right _ -> do
             putStrLn "Not a ImageRGB8"
             return tile
 
@@ -133,23 +110,23 @@ findTile tl pos =
 
 
 stitchTiles :: Model -> Image PixelRGB8
-stitchTiles model = 
+stitchTiles model =
     let
-        stitcher x y = 
+        stitcher x y =
             case findTile (tiles model) (xD, yD) of
-                Just t -> pixelAt (img t) xR yR
+                Just t  -> pixelAt (img t) xR yR
                 Nothing -> PixelRGB8 0 0 0
             where
                 (xD, xR) = x `quotRem` 550
                 (yD, yR) = y `quotRem` 550
     in
-        generateImage stitcher (550 * scale model) (550 * scale model) 
+        generateImage stitcher (550 * scale model) (550 * scale model)
 
 
 --RESIZE
 resizeImage :: Image PixelRGB8 -> Image PixelRGB8
-resizeImage img = 
-    let 
+resizeImage img =
+    let
         fimg = JF.toFridayRGB img
         size = ix2 1550 1550
     in
@@ -158,14 +135,14 @@ resizeImage img =
 
 --CROP IMAGE
 cropImage :: Int -> Int -> Image PixelRGB8 -> Image PixelRGB8
-cropImage screenWidth screenHeight im@Image {..} = 
+cropImage screenWidth screenHeight im@Image {..} =
     let
         crop x y
             | y < top = black
             | y >= bottom = black
             | x < left = black
             | x >= right = black
-            | otherwise = pixelAt im (x-left) (y-top)
+            | otherwise = pixelAt im ( x - left ) ( y - top )
             where
                 black = PixelRGB8 0 0 0
                 top = (screenHeight - imageHeight) `div` 2
