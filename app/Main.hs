@@ -8,20 +8,22 @@ module Main where
 
 import           Lib
 import           Prelude hiding (FilePath)
-import           Req
 import           Turtle
 
 
-main :: IO ()
 main = do
     -- GET ARGS
-    (scl,tz) <- options "A script to download the current picture of Himawari8" parser
-
+    (scl,tz) <- options "A script to download pictures taken by the Himawari-8 satellite" parser
+    -- pth <-
+    --     case outputFolder of
+    --         Nothing -> do; p <- home; return $ p <> ".himawari8"
+    --         Just o -> return o
+    pth <- home
+    pth' <- return $ pth <> ".himawari8"
     -- MAKE URLS
     t <- curTime (negate $ tz)
-    pth <- home
-    model <- return $ initialModel { atime = t, scale = scl, imgfolder = pth <> ".himawari8", imgfile = timePath t}
-    putStrLn ("tz: "++ (show $ tzOffset model)++ "\nscale: " ++ (show $ scale model))
+    model <- return $ initialModel { atime = t, scale = scl, imgfolder = pth', imgfile = timePath t}
+    putStrLn ("tz: "++ (show $ t)++ "\nscale: " ++ (show $ scale model))
     modelUrls <- return (tileURLs model)
 
     -- GET TILES
@@ -59,16 +61,29 @@ main = do
     writeImage pathtoimg imgC
 
     -- SET DESKTOP
-    putStrLn "Setting wallpaper..."
-    setWallpaper pathtoimg
+    -- putStrLn "Setting wallpaper..."
+    -- setWallpaper pathtoimg
 
     putStrLn "Done."
 
 
+initialModel :: Model
+initialModel = Model
+    { tiles = []
+    , scale = 1
+    , tzOffset = 1
+    , baseUrl = "http://himawari8-dl.nict.go.jp/himawari8/img/D531106"
+    , imgfolder = "~/.himawari8"
+    , imgfile = ""
+    , atime = nullTime
+    }
+
+
 parser :: Parser (Int, Int)
 parser =
-    (,) <$> argInt "scale" "Scale"
-        <*> argInt "tz" "Timezone offset"
+    (,) <$> optInt "scale" 's' "Specifies the amount of tiles to be downloaded [default 1]"
+        <*> optInt "timezone-offset" 't' "Timezone offset (in hours) [default 1]"
+        -- <*> optional $ optPath "output" 'o' "Output folder [default ~/.himawari8]"
 
 
 setWallpaper :: FilePath -> IO ()

@@ -7,3 +7,5 @@ extra-deps:
 - friday-juicypixels-0.1.2
 - ratio-int-0.1.2
 resolver: lts-6.20
+build:
+  split-objs: true

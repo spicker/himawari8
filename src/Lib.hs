@@ -4,11 +4,16 @@ module Lib where
 
 
 import           Codec.Picture
+import           Control.Concurrent.Async
 import qualified Data.ByteString          as B
+import qualified Data.ByteString.Lazy     as BL
 import qualified Data.List
 import           Data.Text                (pack, unpack)
 import           Data.Time
+import           Lens.Micro
 import           Network.URI
+import           Network.Wreq
+import qualified Network.Wreq.Session     as S
 import           Prelude                  hiding (FilePath)
 import           Turtle
 import qualified Vision.Image             as F
@@ -37,18 +42,6 @@ data Model = Model
 
 
 
-initialModel :: Model
-initialModel = Model
-    { tiles = []
-    , scale = 1
-    , tzOffset = 1
-    , baseUrl = "http://himawari8-dl.nict.go.jp/himawari8/img/D531106"
-    , imgfolder = ""
-    , imgfile = ""
-    , atime = LocalTime { localDay = fromGregorian 0 0 0, localTimeOfDay = midnight }
-    }
-
-
 --URLs
 curTime :: Int -> IO LocalTime
 curTime tz = do
@@ -56,8 +49,15 @@ curTime tz = do
     return $ utcToLocalTime (hoursToTimeZone tz) currentTime
 
 
+nullTime = LocalTime { localDay = fromGregorian 0 0 0, localTimeOfDay = midnight }
+
+
 timePath :: LocalTime -> FilePath
-timePath t = fromString $ (formatTime defaultTimeLocale "%Y-%m-%d-%H" t) ++ ".png"
+timePath t =
+    let
+        getMinute = (\a -> div a 10) . toInteger . read $ formatTime defaultTimeLocale "%M" t
+    in
+        fromString $ (formatTime defaultTimeLocale "%Y-%m-%d-%H-" t) ++ show getMinute ++ ".png"
 
 
 tileURLs :: Model -> Model
@@ -83,6 +83,23 @@ getTileURL model tile =
         case (parseURI urlStr) of
             Just uri -> tile { url = uri }
             Nothing  -> tile
+
+
+-- Load tiles
+getTile :: S.Session -> Tile -> IO Tile
+getTile sess tile = do
+    u <- return $ show (url tile)
+    putStrLn $ "GET Url: " ++ u
+    r <- S.get sess u
+    putStrLn $ "Status: " ++ show (r ^. responseStatus . statusCode) ++ " " ++ show (r ^. responseStatus . statusMessage)
+    return $ tile { bytestring = BL.toStrict $ r ^. responseBody }
+
+
+getTiles :: Model -> IO Model
+getTiles model = S.withSession $ \sess -> do
+    ts <- return $ tiles model
+    ts' <- mapConcurrently (getTile sess) ts
+    return model {tiles = ts'}
 
 
 decodeTile :: Tile -> IO Tile
@@ -145,8 +162,8 @@ cropImage screenWidth screenHeight im@Image {..} =
             | otherwise = pixelAt im ( x - left ) ( y - top )
             where
                 black = PixelRGB8 0 0 0
-                top = (screenHeight - imageHeight) `div` 2
-                bottom = imageHeight + ((screenHeight - imageHeight) `div` 2)
+                top = screenHeight - imageHeight
+                bottom = screenHeight
                 left = (screenWidth - imageWidth) `div` 2
                 right = imageWidth + ((screenWidth - imageWidth) `div` 2)
     in

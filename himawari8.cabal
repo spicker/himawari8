@@ -1,13 +1,13 @@
 name:                himawari8
-version:             0.1.0.0
-synopsis:            Initial project template from stack
+version:             0.1.1.0
+synopsis:            A small program to download pictures taken by the Himawari-8 satellite
 description:         Please see README.md
 homepage:            https://github.com/githubuser/himawari8#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2016 Author name here
+author:              Christoph Spickermann
+maintainer:          spickermannc@gmail.com
+copyright:           2016 Christoph Spickermann
 category:            Web
 build-type:          Simple
 -- extra-source-files:
@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib, Req
+  exposed-modules:     Lib
   build-depends:       base >= 4.7 && < 5
                      , turtle
                      , HTTP 
@@ -28,7 +28,7 @@ library
                      , time
                      , bytestring
                      , wreq
-                     , lens
+                     , microlens
                     
   default-language:    Haskell2010
   default-extensions:  OverloadedStrings
