@@ -6,8 +6,9 @@
 module Main where
 
 
+import           Control.Lens
 import           Lib
-import           Prelude hiding (FilePath)
+import           Prelude      hiding (FilePath)
 import           Turtle
 
 
@@ -22,8 +23,8 @@ main = do
     pth' <- return $ pth <> ".himawari8"
     -- MAKE URLS
     t <- curTime (negate $ tz)
-    model <- return $ initialModel { atime = t, scale = scl, imgfolder = pth', imgfile = timePath t}
-    putStrLn ("tz: "++ (show $ t)++ "\nscale: " ++ (show $ scale model))
+    model <- return $ initialModel { _atime = t, _scale = scl, _imgfolder = pth', _imgfile = timePath t}
+    putStrLn ("tz: "++ (show $ t)++ "\nscale: " ++ (show $ model^.scale))
     modelUrls <- return (tileURLs model)
 
     -- GET TILES
@@ -31,13 +32,13 @@ main = do
     modelBs <- getTiles modelUrls
 
     -- REMOVE OLD
-    direxists <- testdir (imgfolder modelBs)
+    direxists <- testdir (modelBs^.imgfolder)
     case direxists of
         True  -> return ()
-        False -> mkdir $ imgfolder modelBs
+        False -> mkdir $ modelBs^.imgfolder
 
     putStrLn "Removing old files..."
-    stdout $ removeOld (imgfolder modelBs)
+    stdout $ removeOld (modelBs^.imgfolder)
 
     -- SAVE TILES
     putStrLn "Decoding tiles..."
@@ -56,7 +57,7 @@ main = do
     imgC <- return $ cropImage 2560 1600 imgR
 
     -- WRITE IMAGE
-    pathtoimg <- return (imgfolder modelD <> imgfile modelD)
+    pathtoimg <- return (modelD^.imgfolder <> modelD^.imgfile)
     putStrLn "Saving png..."
     writeImage pathtoimg imgC
 
@@ -69,13 +70,13 @@ main = do
 
 initialModel :: Model
 initialModel = Model
-    { tiles = []
-    , scale = 1
-    , tzOffset = 1
-    , baseUrl = "http://himawari8-dl.nict.go.jp/himawari8/img/D531106"
-    , imgfolder = "~/.himawari8"
-    , imgfile = ""
-    , atime = nullTime
+    { _tiles = []
+    , _scale = 1
+    , _tzOffset = 1
+    , _baseUrl = "http://himawari8-dl.nict.go.jp/himawari8/img/D531106"
+    , _imgfolder = "~/.himawari8"
+    , _imgfile = ""
+    , _atime = nullTime
     }
 
 
