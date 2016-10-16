@@ -1,4 +1,5 @@
-{-# LANGUAGE RecordWildCards, TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Lib where
 
@@ -26,16 +27,17 @@ data Tile = Tile
     , _bytestring :: B.ByteString
     , _url        :: URI
     , _img        :: Image PixelRGB8
-    -- , path :: FilePath
     }
 
 
 data Model = Model
-    { _tiles     :: [Tile]
-    , _scale     :: Int
+    { _scale     :: Int
     , _tzOffset  :: Int
-    , _baseUrl   :: String
     , _imgfolder :: FilePath
+    , _width     :: Int
+    , _height    :: Int
+    , _tiles     :: [Tile]
+    , _baseUrl   :: String
     , _imgfile   :: FilePath
     , _atime     :: LocalTime
     }
@@ -145,11 +147,11 @@ stitchTiles model =
 
 
 --RESIZE
-resizeImage :: Image PixelRGB8 -> Image PixelRGB8
-resizeImage img =
+resizeImage :: Int -> Image PixelRGB8 -> Image PixelRGB8
+resizeImage s img =
     let
         fimg = JF.toFridayRGB img
-        size = ix2 1550 1550
+        size = ix2 s s
     in
         JF.toJuicyRGB $ F.resize F.Bilinear size fimg
 
@@ -166,8 +168,8 @@ cropImage screenWidth screenHeight im@Image {..} =
             | otherwise = pixelAt im ( x - left ) ( y - top )
             where
                 black = PixelRGB8 0 0 0
-                top = screenHeight - imageHeight
-                bottom = screenHeight
+                top = (screenHeight - imageHeight) `div` 2
+                bottom = imageHeight + ((screenHeight - imageHeight) `div` 2)
                 left = (screenWidth - imageWidth) `div` 2
                 right = imageWidth + ((screenWidth - imageWidth) `div` 2)
     in

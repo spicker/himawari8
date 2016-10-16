@@ -1,4 +1,3 @@
-
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
@@ -7,38 +6,30 @@ module Main where
 
 
 import           Control.Lens
+import           Data.Maybe   (fromMaybe)
 import           Lib
 import           Prelude      hiding (FilePath)
 import           Turtle
 
 
 main = do
-    -- GET ARGS
-    (scl,tz) <- options "A script to download pictures taken by the Himawari-8 satellite" parser
-    -- pth <-
-    --     case outputFolder of
-    --         Nothing -> do; p <- home; return $ p <> ".himawari8"
-    --         Just o -> return o
-    pth <- home
-    pth' <- return $ pth <> ".himawari8"
-    -- MAKE URLS
-    t <- curTime (negate $ tz)
-    model <- return $ initialModel { _atime = t, _scale = scl, _imgfolder = pth', _imgfile = timePath t}
-    putStrLn ("tz: "++ (show $ t)++ "\nscale: " ++ (show $ model^.scale))
+    -- Get args
+    model <- settings
     modelUrls <- return (tileURLs model)
+
+    -- Make dir
+    direxists <- testdir $ model^.imgfolder
+    case direxists of
+        False -> mkdir $ model^.imgfolder
+        True  -> return ()
 
     -- GET TILES
     putStrLn "Loading tiles..."
     modelBs <- getTiles modelUrls
 
     -- REMOVE OLD
-    direxists <- testdir (modelBs^.imgfolder)
-    case direxists of
-        True  -> return ()
-        False -> mkdir $ modelBs^.imgfolder
-
     putStrLn "Removing old files..."
-    stdout $ removeOld (modelBs^.imgfolder)
+    stdout $ removeOld $ modelBs^.imgfolder
 
     -- SAVE TILES
     putStrLn "Decoding tiles..."
@@ -50,11 +41,11 @@ main = do
 
     -- RESIZE
     putStrLn "Resizing image..."
-    imgR <- return $ resizeImage img
+    imgR <- return $ resizeImage (modelD^.height) img
 
     -- CROP IMAGE
     putStrLn "Crop image..."
-    imgC <- return $ cropImage 2560 1600 imgR
+    imgC <- return $ cropImage (modelD^.width) (modelD^.height) imgR
 
     -- WRITE IMAGE
     pathtoimg <- return (modelD^.imgfolder <> modelD^.imgfile)
@@ -63,32 +54,44 @@ main = do
 
     -- SET DESKTOP
     -- putStrLn "Setting wallpaper..."
-    -- setWallpaper pathtoimg
+    -- setWallpaperOSX pathtoimg
 
     putStrLn "Done."
 
 
-initialModel :: Model
-initialModel = Model
-    { _tiles = []
-    , _scale = 1
-    , _tzOffset = 1
-    , _baseUrl = "http://himawari8-dl.nict.go.jp/himawari8/img/D531106"
-    , _imgfolder = "~/.himawari8"
-    , _imgfile = ""
-    , _atime = nullTime
-    }
-
-
-parser :: Parser (Int, Int)
+parser :: Parser (Maybe Int, Maybe Int, Maybe FilePath, Maybe Int, Maybe Int)
 parser =
-    (,) <$> optInt "scale" 's' "Specifies the amount of tiles to be downloaded [default 1]"
-        <*> optInt "timezone-offset" 't' "Timezone offset (in hours) [default 1]"
-        -- <*> optional $ optPath "output" 'o' "Output folder [default ~/.himawari8]"
+    (,,,,) <$> (optional $ optInt "scale" 's' "Specifies the amount of tiles to be downloaded [default 1]")
+        <*> (optional $ optInt "timezone-offset" 't' "Timezone offset (in hours) [default 1]")
+        <*> (optional $ optPath "output" 'o' "Output folder [default ~/.himawari8]")
+        <*> (optional $ optInt "width" 'w' "Output image width [default 2650]")
+        <*> (optional $ optInt "height" 'h' "Output image height [default 1600]")
 
 
-setWallpaper :: FilePath -> IO ()
-setWallpaper imgpath = do
+settings :: IO Model
+settings = do
+    homepath <- home
+    (s,t,o,w,h) <- options "A script to download images taken by the Himawari-8 satellite" parser
+    let sDefault = 1
+        tDefault = 1
+        oDefault = homepath <> ".himawari8"
+        wDefault = 2560
+        hDefault = 1600
+    ct <- curTime (negate $ fromMaybe tDefault t)
+    return $ Model
+        { _scale = fromMaybe sDefault s
+        , _tzOffset = fromMaybe tDefault t
+        , _imgfolder =  fromMaybe oDefault o
+        , _width = fromMaybe wDefault w
+        , _height = fromMaybe hDefault h
+        , _tiles = []
+        , _baseUrl = "http://himawari8-dl.nict.go.jp/himawari8/img/D531106"
+        , _imgfile = timePath ct
+        , _atime = ct}
+
+
+setWallpaperOSX :: FilePath -> IO ()
+setWallpaperOSX imgpath = do
     procs
         "sqlite3"
         [ "/Users/spicker/Library/Application Support/Dock/desktoppicture.db"
@@ -105,4 +108,3 @@ removeOld folder = do
     p <- find (ends $ text ".png") folder
     liftIO $ rm p
     return (format (s%fp) "Removed: " p)
-
