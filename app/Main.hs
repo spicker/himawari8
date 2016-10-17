@@ -65,13 +65,13 @@ parser =
         <*> (optional $ optInt "timezone-offset" 't' "Timezone offset (in hours) [default 1]")
         <*> (optional $ optPath "output" 'o' "Output folder [default ~/.himawari8]")
         <*> (optional $ optInt "width" 'w' "Output image width [default 2650]")
-        <*> (optional $ optInt "height" 'h' "Output image height [default 1600]")
+        <*> (optional $ optInt "height" 'g' "Output image height [default 1600]")
 
 
 settings :: IO Model
 settings = do
     homepath <- home
-    (s,t,o,w,h) <- options "A script to download images taken by the Himawari-8 satellite" parser
+    (s,t,o,w,h) <- options "A small program to download images taken by the Himawari-8 satellite" parser
     let sDefault = 1
         tDefault = 1
         oDefault = homepath <> ".himawari8"

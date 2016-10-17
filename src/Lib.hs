@@ -5,20 +5,20 @@ module Lib where
 
 
 import           Codec.Picture
-import           Control.Concurrent.Async
+import           Control.Concurrent.Async (mapConcurrently)
 import           Control.Lens
 import qualified Data.ByteString          as B
-import qualified Data.ByteString.Lazy     as BL
-import qualified Data.List
-import           Data.Text                (pack, unpack)
+import           Data.ByteString.Lazy     (toStrict)
+import qualified Data.List                (find)
+import           Data.Text                (unpack)
 import           Data.Time
 import           Network.URI
 import           Network.Wreq
 import qualified Network.Wreq.Session     as S
 import           Prelude                  hiding (FilePath)
 import           Turtle
-import qualified Vision.Image             as F
-import qualified Vision.Image.JuicyPixels as JF
+import           Vision.Image             (InterpolMethod (Bilinear), resize)
+import           Vision.Image.JuicyPixels (toFridayRGB, toJuicyRGB)
 import           Vision.Primitive         (ix2)
 
 
@@ -97,8 +97,7 @@ getTile sess tile = do
     putStrLn $ "GET Url: " ++ u
     r <- S.get sess u
     putStrLn $ "Status: " ++ show (r ^. responseStatus . statusCode) ++ " " ++ show (r ^. responseStatus . statusMessage)
-    -- return $ tile { bytestring = BL.toStrict $ r ^. responseBody }
-    return $ set bytestring (BL.toStrict $ r ^. responseBody) tile
+    return $ set bytestring (toStrict $ r ^. responseBody) tile
 
 
 getTiles :: Model -> IO Model
@@ -128,8 +127,7 @@ decodeTiles model = do
 
 --STICH TILES
 findTile :: [Tile] -> (Int, Int) -> Maybe Tile
-findTile tl pos =
-    Data.List.find (\t -> (t^.position) == pos) tl
+findTile tl pos = Data.List.find (\t -> (t^.position) == pos) tl
 
 
 stitchTiles :: Model -> Image PixelRGB8
@@ -150,10 +148,10 @@ stitchTiles model =
 resizeImage :: Int -> Image PixelRGB8 -> Image PixelRGB8
 resizeImage s img =
     let
-        fimg = JF.toFridayRGB img
+        fimg = toFridayRGB img
         size = ix2 s s
     in
-        JF.toJuicyRGB $ F.resize F.Bilinear size fimg
+        toJuicyRGB $ resize Bilinear size fimg
 
 
 --CROP IMAGE

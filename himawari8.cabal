@@ -1,8 +1,8 @@
 name:                himawari8
-version:             0.1.1.0
+version:             0.1.2.0
 synopsis:            A small program to download pictures taken by the Himawari-8 satellite
 description:         Please see README.md
-homepage:            https://github.com/githubuser/himawari8#readme
+homepage:            https://github.com/spicker/himawari8
 license:             BSD3
 license-file:        LICENSE
 author:              Christoph Spickermann
@@ -57,4 +57,4 @@ test-suite himawari8-test
 
 source-repository head
   type:     git
-  location: https://github.com/githubuser/himawari8
+  location: https://github.com/spicker/himawari8
