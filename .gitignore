@@ -26,3 +26,6 @@ cabal.project.local
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
+
+### Other ###
+app/hi8_truecolor.hs
